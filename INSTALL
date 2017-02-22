@@ -1,0 +1,14 @@
+Getting this to run!
+
+You need to install png lib, and lua5.1 for this to work.
+
+LIBPNG: http://www.libpng.org/pub/png/libpng.html
+
+LUA: brew install lua@5.1
+
+
+The makefile required some tweaking as well. It uses pkg-config, which searches for .pc files in its path.
+It wasn't able to find libpng, so I tweaked it by adding '-I/usr/local/include -L/usr/local/lib -w -lz -lpng16'
+to the CPP and CXX flags. 
+
+pkg-config is really just a tool to easily find libraries, and this line links to the inclues and libs for the package directly, so we don't need pkg-config.
