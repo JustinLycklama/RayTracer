@@ -1,0 +1,6 @@
+Justin Lycklama
+20349203
+
+The raytracer executable was linked and compiled on ubuntu1204-004, and can be run via ./rt <luaFileName>. 
+No additional features added, no extra scene.
+Hierarchical transformations is not implemented.
