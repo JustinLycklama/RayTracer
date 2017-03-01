@@ -1,6 +1,8 @@
 #include "scene.hpp"
 #include <iostream>
 
+using namespace std;
+
 SceneNode::SceneNode(const std::string& name)
   : m_name(name)
 {
@@ -40,6 +42,8 @@ std::list<SceneNode*> SceneNode::getChildren(){
 bool SceneNode::checkCollision(Point3D rayOrigin, Vector3D ray, 
 	double &t, Vector3D &normal, 
 	Colour &kd, Colour &ks, Colour &ke, double &shininess){
+
+        std::cerr << "SceneNode: Check Collision" << std::endl;
 	
 	return false;
 }
@@ -78,6 +82,8 @@ bool JointNode::checkCollision(Point3D rayOrigin, Vector3D ray,
 		double &t, Vector3D &normal,
 		Colour &kd, Colour &ks, Colour &ke, double &shininess)
 {
+        std::cerr << "Joint Node: Check Collision" << endl;
+
 	return false;
 }
 
@@ -99,7 +105,7 @@ bool GeometryNode::checkCollision(Point3D rayOrigin, Vector3D ray,
 {
 	//std::cerr<<"test: " << m_name << ".\n";
 	
-	bool hit = false;;
+	bool hit = false;
 	
 	NonhierSphere* sphere =  dynamic_cast<NonhierSphere*>(m_primitive);
 	if(sphere != NULL){
@@ -109,7 +115,7 @@ bool GeometryNode::checkCollision(Point3D rayOrigin, Vector3D ray,
 		Mesh* mesh =  dynamic_cast<Mesh*>(m_primitive);
 		
 		if(mesh != NULL){
-			//hit = mesh->checkCollision(rayOrigin, ray, t, normal);
+			hit = mesh->checkCollision(rayOrigin, ray, t, normal);
 		}
 	}
 	

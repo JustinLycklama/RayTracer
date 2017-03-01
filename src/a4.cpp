@@ -19,18 +19,18 @@ void a4_render(// What to render
                const std::list<Light*>& lights
                )
 {
-  // Fill in raytracing code here.
 
- // std::cerr << "Stub: a4_render(" << root << ",\n     "
-  //          << filename << ", " << width << ", " << height << ",\n     "
-   //         << eye << ", " << view << ", " << up << ", " << fov << ",\n     "
-    //        << ambient << ",\n     {";
+    std::cerr << "Render ..." << std::endl;
+    std::cerr << std::endl;
 
-  for (std::list<Light*>::const_iterator I = lights.begin(); I != lights.end(); ++I) {
-    if (I != lights.begin()) std::cerr << ", ";
-    std::cerr << **I;
-  }
-  std::cerr << "});" << std::endl;
+    // Print all of the lights in our scene
+    for (std::list<Light*>::const_iterator I = lights.begin(); I != lights.end(); ++I) {
+        if (I != lights.begin()) std::cerr << ", ";
+        std::cerr << **I;
+    }
+   
+         
+        std::cerr << "});" << std::endl;
   
 	// Setup device to world coordinate matrix
 
@@ -92,171 +92,181 @@ void a4_render(// What to render
 	}
 
 	Matrix4x4 transform = t4*r3*s2*t1;
-  Image img(width, height, 3);
+  
+        // 3 elements per pixel. R, G, B.
+        Image img(width, height, 3);
 
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
+    std::cerr << "Begin creating light rays" << std::endl;
+
+    // Perform entire image creation. Transform a pixel point into a world point, create a vector from that pixel to our eye, 
+    // and find what color that ray of light will be.
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
       
-			Point3D pixelPoint = Point3D(x, y, 0);
-			Point3D worldPoint = transform * pixelPoint; 
+	    Point3D pixelPoint = Point3D(x, y, 0);
+	    Point3D worldPoint = transform * pixelPoint; 
 
-			Vector3D ray = worldPoint - eye;
-			ray.normalize();
+	    Vector3D ray = worldPoint - eye;
+	    ray.normalize();
 
-			Colour c = getColourAtPoint(eye, ray, lights, eye, ambient, root);
+	    Colour c = getColourAtPoint(eye, ray, lights, eye, ambient, root);
 
-			img(x, y, 0) = c.R();
-			img(x, y, 1) = c.G();
-			img(x, y, 2) = c.B();
+	    img(x, y, 0) = c.R();
+	    img(x, y, 1) = c.G();
+	    img(x, y, 2) = c.B();
 		
-			// Red: increasing from top to bottom
-      //img(x, y, 0) = (double)y / height;
-      // Green: increasing from left to right
-      //img(x, y, 1) = (double)x / width;
-      // Blue: in lower-left and upper-right corners
-      //img(x, y, 2) = ((y < height/2 && x < height/2)
-      //               || (y >= height/2 && x >= height/2)) ? 1.0 : 0.0;
-    }
-  }	
+	    // Red: increasing from top to bottom
+            //img(x, y, 0) = (double)y / height;
+            // Green: increasing from left to right
+            //img(x, y, 1) = (double)x / width;
+            // Blue: in lower-left and upper-right corners
+            //img(x, y, 2) = ((y < height/2 && x < height/2)
+            //               || (y >= height/2 && x >= height/2)) ? 1.0 : 0.0;
+        }
+    }	
 
-  img.savePng(filename);  
+
+    std::cerr << "Create Image: " << filename << std::endl;
+    img.savePng(filename);  
 }
 
-Colour getColourAtPoint(Point3D origin, Vector3D ray, std::list<Light*> lights, Point3D eye, Colour ambient, SceneNode* root){
+Colour getColourAtPoint(Point3D origin, Vector3D ray, std::list<Light*> lights, Point3D eye, Colour ambient, SceneNode* root)
+{
 	
-		Colour c_kd = Colour(0,0,0);
-		Colour c_ks = Colour(0,0,0);
-		Colour c_ke = Colour(0,0,0);
+    Colour c_kd = Colour(0,0,0);
+    Colour c_ks = Colour(0,0,0);
+    Colour c_ke = Colour(0,0,0);
 
-		Vector3D normal;
-		double c_t;
-		double c_shininess;
+    Vector3D normal;
+    double c_t;
+    double c_shininess;
 
-		double a = 1;
+    double a = 1;
 
-		if(hitAnything(origin, ray, c_t, normal, c_kd, c_ks, c_ke, c_shininess, root)){
+    if(hitAnything(origin, ray, c_t, normal, c_kd, c_ks, c_ke, c_shininess, root)) {
 			
-			//std::cerr << "we hit " << c_ke << ".\n";	
+	//std::cerr << "we hit " << c_ke << ".\n";	
 
-			Colour retColour = a * ambient;					
+	Colour retColour = a * ambient;					
 
-			//std::cerr << "we pass";
+	//std::cerr << "we pass";
 
-			for(std::list<Light*>::iterator it=lights.begin(); it != lights.end(); ++it)
-			{
-				// KD
-				Light* light = *it;
+	for(std::list<Light*>::iterator it=lights.begin(); it != lights.end(); ++it)
+	{
+	    // KD
+            Light* light = *it;
 
-				Point3D pointOnSurface = origin + c_t*ray;
-				Vector3D dirToLight = light->position - pointOnSurface;			
-					
-				dirToLight.normalize();
-				normal.normalize();	
+            Point3D pointOnSurface = origin + c_t*ray;
+            Vector3D dirToLight = light->position - pointOnSurface;			
+                    
+            dirToLight.normalize();
+            normal.normalize();	
 
-				//std::cerr << "R: " << c_kd.R() << "\n";				
+            //std::cerr << "R: " << c_kd.R() << "\n";				
 
-				//retColour = retColour + (c_kd * dirToLight.dot(normal) * light->colour);
+            //retColour = retColour + (c_kd * dirToLight.dot(normal) * light->colour);
 
-				//std::cerr << "a " << normal << "\n";				
-				//std::cerr << "b " << dirToLight << "\n";				
-				
-				//std::cerr << "numba " << dirToLight.dot(normal) << "\n";				
-				//std::cerr << "retColour: " << retColour.R() << "\n";				
+            //std::cerr << "a " << normal << "\n";				
+            //std::cerr << "b " << dirToLight << "\n";				
+            
+            //std::cerr << "numba " << dirToLight.dot(normal) << "\n";				
+            //std::cerr << "retColour: " << retColour.R() << "\n";				
 
-				pointOnSurface = pointOnSurface + 1*dirToLight;
-				//dirToLight = Vector3D(0, 0, 0);
-				//redo it...
-				//dirToLight = light->position - pointOnSurface;			
+            pointOnSurface = pointOnSurface + 1*dirToLight;
+            //dirToLight = Vector3D(0, 0, 0);
+            //redo it...
+            //dirToLight = light->position - pointOnSurface;			
 
-				//std::cerr << "pointa " << pointOnSurface << "\n";				
-				//std::cerr << "dir " << dirToLight << "\n";				
+            //std::cerr << "pointa " << pointOnSurface << "\n";				
+            //std::cerr << "dir " << dirToLight << "\n";				
 
-				// Check the shadow ray
-				if(!hitAnything(pointOnSurface, dirToLight, root)){
+            // Check the shadow ray
+            if(!hitAnything(pointOnSurface, dirToLight, root)){
 
-				retColour = retColour + (c_kd * dirToLight.dot(normal) * light->colour);
+            retColour = retColour + (c_kd * dirToLight.dot(normal) * light->colour);
 
-				//if(dirToLight.dot(normal) > 0){
-					// KS
-					Vector3D reflectedDirection = 2 * (dirToLight.dot(normal)) * (normal - dirToLight); 
-					Vector3D toViewer = eye - pointOnSurface;
+            //if(dirToLight.dot(normal) > 0){
+                    // KS
+                    Vector3D reflectedDirection = 2 * (dirToLight.dot(normal)) * (normal - dirToLight); 
+                    Vector3D toViewer = eye - pointOnSurface;
 
-					//std::cerr << "eye " << eye << "\n";				
-			
-					reflectedDirection.normalize();
-					toViewer.normalize();
-		
-					retColour = retColour + (c_ks * pow(reflectedDirection.dot(toViewer), c_shininess) 
-						* light->colour);
+                    //std::cerr << "eye " << eye << "\n";				
+    
+                    reflectedDirection.normalize();
+                    toViewer.normalize();
 
-					//std::cerr << "c " << pow(reflectedDirection.dot(toViewer), c_shininess) << "\n";				
-					//std::cerr << "UPretColour: " << retColour.R() << "\n";				
-				//}
-				} // end hit check	
+                    retColour = retColour + (c_ks * pow(reflectedDirection.dot(toViewer), c_shininess) 
+                            * light->colour);
 
-			}
+                    //std::cerr << "c " << pow(reflectedDirection.dot(toViewer), c_shininess) << "\n";				
+                    //std::cerr << "UPretColour: " << retColour.R() << "\n";				
+            //}
+            } // end hit check	
 
-			return retColour;
-		}
+        }
 
-	else return Colour(0.1, 0.1, ray[1]);
+        return retColour;
+    }
+    else {
+        // Return the background color
+        return Colour(0.1, 0.1, ray[1]);
+    }
 }
 
-bool hitAnything (Point3D rayOrigin, Vector3D ray, SceneNode* root){
+bool hitAnything (Point3D rayOrigin, Vector3D ray, SceneNode* root)
+{
+    Colour c_kd = Colour(0,0,0);
+    Colour c_ks = Colour(0,0,0);
+    Colour c_ke = Colour(0,0,0);
 
-		Colour c_kd = Colour(0,0,0);
-		Colour c_ks = Colour(0,0,0);
-		Colour c_ke = Colour(0,0,0);
+    Vector3D normal;
+    double c_t;
+    double c_shininess;
 
-		Vector3D normal;
-		double c_t;
-		double c_shininess;
-
-		return hitAnything (rayOrigin, ray, c_t, normal, c_kd, c_ks, c_ke, c_shininess, root);
+    return hitAnything (rayOrigin, ray, c_t, normal, c_kd, c_ks, c_ke, c_shininess, root);
 }
 
 bool hitAnything (Point3D rayOrigin, Vector3D ray, double &t, Vector3D &normal, 
 	Colour &kd, Colour &ks, Colour &ke, double &shininess, SceneNode* root)
 {
+    // Cycle through each object and check for a collision with this ray
+    
+    t = 100000;
+    bool hitAnything = false;
 
-	// Cycle through each object and check for a collision with this ray
-	
-	t = 100000;
-	bool hitAnything = false;
+    // For now, deal with nonheir objects only
+    std::list<SceneNode*> children = root->getChildren();
+    for(std::list<SceneNode*>::iterator it = children.begin(); 
+                    it != children.end(); ++it)
+    {
+            GeometryNode* node = (GeometryNode*) *it;
 
-	// For now, deal with nonheir objects only
-	std::list<SceneNode*> children = root->getChildren();
-	for(std::list<SceneNode*>::iterator it = children.begin(); 
-			it != children.end(); ++it)
-	{
-		GeometryNode* node = (GeometryNode*) *it;
+            Colour c_kd = Colour(0,0,0);
+            Colour c_ks = Colour(0,0,0);
+            Colour c_ke = Colour(0,0,0);
+            
+            double c_t = 1000000;
+            double c_shininess = 0;
 
-		Colour c_kd = Colour(0,0,0);
-		Colour c_ks = Colour(0,0,0);
-		Colour c_ke = Colour(0,0,0);
-		
-		double c_t = 1000000;
-		double c_shininess = 0;
+            bool hit = node->checkCollision(rayOrigin, ray, c_t, normal, 
+                    c_kd, c_ks, c_ke, c_shininess);
 
-		bool hit = node->checkCollision(rayOrigin, ray, c_t, normal, 
-			c_kd, c_ks, c_ke, c_shininess);
+            if(hit && c_t < t)
+            {
+                    hitAnything = true;			
 
-		if(hit && c_t < t)
-		{
-			hitAnything = true;			
+            //	std::cerr<< "Updating";
 
-		//	std::cerr<< "Updating";
+                    t = c_t;			
+                    kd = c_kd;
+                    ks = c_ks;
+                    ke = c_ke;
+                    
+                    shininess = c_shininess;
+                    //std::cerr<<"updated\n";
+            }
+    }
 
-			t = c_t;			
-			kd = c_kd;
-			ks = c_ks;
-			ke = c_ke;
-			
-			shininess = c_shininess;
-			//std::cerr<<"updated\n";
-		}
-	}
-
-	return hitAnything;
+    return hitAnything;
 }
 

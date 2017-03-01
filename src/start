@@ -1,0 +1,28 @@
+#!/bin/bash
+
+clear
+
+echo "-----"
+
+./rt ../data/simple.lua
+
+echo "-----"
+echo ""
+echo "-----"
+
+# Need to move supporting files back to /data
+./rt nonhier2.lua
+
+echo "-----"
+echo
+
+
+# Files with a render line (aka scene files)
+# hier
+# instance
+# macho cows
+# simple cows
+# nonhier
+# nonher2
+# simple
+

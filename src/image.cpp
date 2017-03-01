@@ -81,6 +81,8 @@ bool Image::savePng(const std::string& filename)
   FILE* fout = std::fopen(filename.c_str(), "wb");
   png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
   png_infop info_ptr = png_create_info_struct(png_ptr);
+
+  //TODO: I commented this when setting up the project. Requires older version of libpng. Needed?
   //setjmp(png_ptr->jmpbuf);
 
   /* Setup PNG I/O */
