@@ -1,6 +1,4 @@
 #include "mesh.hpp"
-#include <iostream>
-#include <assert.h>
 
 using namespace std;
 
@@ -44,7 +42,7 @@ std::ostream& operator<<(std::ostream& out, const Mesh& mesh)
 bool Mesh::checkCollision(Point3D rayOrigin, Vector3D ray, 
 		double &t, Vector3D &normal)
 {
-	for (std::vector<Mesh::Face>::const_iterator I = m_faces.begin(); 
+    for (std::vector<Mesh::Face>::const_iterator I = m_faces.begin(); 
 			I != m_faces.end(); ++I) {
 
 		Point3D* corePoint = &m_verts.at(*(I->begin()));
@@ -61,12 +59,12 @@ bool Mesh::checkCollision(Point3D rayOrigin, Vector3D ray,
 				bool hit = intersectTriangle(*corePoint, *previousPoint, point, 
 										rayOrigin, ray, intersection, normal);
 
-				if(hit){
-					t = (intersection - rayOrigin).length() / ray.length();
+				if(hit) {
+				    t = (intersection - rayOrigin).length() / ray.length();
 					if(t < 0)
 						return false;
 	
-                                        return true;
+                    return true;
 				}
 
 			}
@@ -80,7 +78,7 @@ bool Mesh::checkCollision(Point3D rayOrigin, Vector3D ray,
 
 // Refer to the documentation for Triangle Intersection
 bool Mesh::intersectTriangle(Point3D v0, Point3D v1, Point3D v2, 
-			Point3D origin, Vector3D ray, Point3D &intersection, Vector3D &normal)
+			Point3D origin, Vector3D ray, Point3D &intersection, Vector3D &normalOut)
 {
     // Precalculate required vectors
 
@@ -89,7 +87,7 @@ bool Mesh::intersectTriangle(Point3D v0, Point3D v1, Point3D v2,
     Vector3D v = v2 - v0;       // Triangle edge two
     
     // The cross product between two vectors (defining a plane) results in the normal of that plane
-    normal = u.cross(v);
+    Vector3D normal = u.cross(v);
 
     // If the three points do not form a triangle but a line segment, we will be left with this
     if (normal[0] == 0 && normal[1] == 0 && normal[2] == 0) { 
@@ -130,7 +128,7 @@ bool Mesh::intersectTriangle(Point3D v0, Point3D v1, Point3D v2,
     vv = v.dot(v);
     wu = w.dot(u);
     wv = w.dot(v);
-    
+        
     D = uv * uv - uu * vv;
 
     // Calculate s and t. As long as the following holds, our intersection point is in the triangle
@@ -146,6 +144,9 @@ bool Mesh::intersectTriangle(Point3D v0, Point3D v1, Point3D v2,
     if (t < 0.0 || (s + t) > 1.0) {  // I is outside T
         return false;
     }
+
+    // The intersection happened, update the normal
+    normalOut = normal;
 
     return true;
 }

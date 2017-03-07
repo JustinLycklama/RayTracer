@@ -16,6 +16,7 @@ echo "-----"
 echo "-----"
 echo
 
+open nonhier2.png
 
 # Files with a render line (aka scene files)
 # hier

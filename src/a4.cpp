@@ -132,7 +132,6 @@ void a4_render(// What to render
 
 Colour getColourAtPoint(Point3D origin, Vector3D ray, std::list<Light*> lights, Point3D eye, Colour ambient, SceneNode* root)
 {
-	
     Colour c_kd = Colour(0,0,0);
     Colour c_ks = Colour(0,0,0);
     Colour c_ke = Colour(0,0,0);
@@ -141,68 +140,51 @@ Colour getColourAtPoint(Point3D origin, Vector3D ray, std::list<Light*> lights, 
     double c_t;
     double c_shininess;
 
-    double a = 1;
-
     if(hitAnything(origin, ray, c_t, normal, c_kd, c_ks, c_ke, c_shininess, root)) {
 			
-	//std::cerr << "we hit " << c_ke << ".\n";	
+	    Colour retColour = 1 * ambient;					
 
-	Colour retColour = a * ambient;					
-
-	//std::cerr << "we pass";
-
-	for(std::list<Light*>::iterator it=lights.begin(); it != lights.end(); ++it)
-	{
-	    // KD
+	    for(std::list<Light*>::iterator it=lights.begin(); it != lights.end(); ++it)
+	    {   
             Light* light = *it;
 
             Point3D pointOnSurface = origin + c_t*ray;
-            Vector3D dirToLight = light->position - pointOnSurface;			
-                    
+            Vector3D dirToLight = light->position - pointOnSurface;	
+
             dirToLight.normalize();
             normal.normalize();	
 
-            //std::cerr << "R: " << c_kd.R() << "\n";				
+            // Remove interference. If we trace directly from our point back to the light, 
+            // theres a chance we'd collide with the same thing again. 
 
-            //retColour = retColour + (c_kd * dirToLight.dot(normal) * light->colour);
-
-            //std::cerr << "a " << normal << "\n";				
-            //std::cerr << "b " << dirToLight << "\n";				
-            
-            //std::cerr << "numba " << dirToLight.dot(normal) << "\n";				
-            //std::cerr << "retColour: " << retColour.R() << "\n";				
-
-            pointOnSurface = pointOnSurface + 1*dirToLight;
-            //dirToLight = Vector3D(0, 0, 0);
-            //redo it...
-            //dirToLight = light->position - pointOnSurface;			
-
-            //std::cerr << "pointa " << pointOnSurface << "\n";				
-            //std::cerr << "dir " << dirToLight << "\n";				
+            // A new point, one unit vector away from intersection point, towards the light
+            pointOnSurface = pointOnSurface + dirToLight;
 
             // Check the shadow ray
-            if(!hitAnything(pointOnSurface, dirToLight, root)){
+            // If we don't hit anything, add diffuse and specular light
+            if(!hitAnything(pointOnSurface, dirToLight, root))  
+            {
+                float specular = 0.0;
 
-            retColour = retColour + (c_kd * dirToLight.dot(normal) * light->colour);
+                // Lambert's cosine law
+                float lambertian = normal.dot(dirToLight);
 
-            //if(dirToLight.dot(normal) > 0){
-                    // KS
-                    Vector3D reflectedDirection = 2 * (dirToLight.dot(normal)) * (normal - dirToLight); 
-                    Vector3D toViewer = eye - pointOnSurface;
+                if (lambertian < 0) {
+                    lambertian = 0;
+                }
+                else if (lambertian > 0) {
+                    Vector3D dirToViewer = -dirToLight;
+                    Vector3D reflectedDirection = reflectRayAlongNormal(ray, normal);
 
-                    //std::cerr << "eye " << eye << "\n";				
-    
-                    reflectedDirection.normalize();
-                    toViewer.normalize();
+                    float specAngle = reflectedDirection.dot(dirToViewer);
+                    specular = pow(specAngle, c_shininess);
+                }
 
-                    retColour = retColour + (c_ks * pow(reflectedDirection.dot(toViewer), c_shininess) 
-                            * light->colour);
-
-                    //std::cerr << "c " << pow(reflectedDirection.dot(toViewer), c_shininess) << "\n";				
-                    //std::cerr << "UPretColour: " << retColour.R() << "\n";				
-            //}
-            } // end hit check	
-
+                // Add diffuse and specular light
+                retColour = retColour + 
+                            c_kd * lambertian * light->colour +
+                            c_ke * specular * light->colour;
+            }
         }
 
         return retColour;
@@ -211,6 +193,12 @@ Colour getColourAtPoint(Point3D origin, Vector3D ray, std::list<Light*> lights, 
         // Return the background color
         return Colour(0.1, 0.1, ray[1]);
     }
+}
+
+// Reflection is r = d−2(d⋅n)n
+Vector3D reflectRayAlongNormal(Vector3D ray, Vector3D normal) 
+{
+    return ray - 2 * (ray.dot(normal)) * normal;
 }
 
 bool hitAnything (Point3D rayOrigin, Vector3D ray, SceneNode* root)
@@ -255,15 +243,12 @@ bool hitAnything (Point3D rayOrigin, Vector3D ray, double &t, Vector3D &normal,
             {
                     hitAnything = true;			
 
-            //	std::cerr<< "Updating";
-
                     t = c_t;			
                     kd = c_kd;
                     ks = c_ks;
                     ke = c_ke;
                     
                     shininess = c_shininess;
-                    //std::cerr<<"updated\n";
             }
     }
 

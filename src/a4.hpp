@@ -22,6 +22,8 @@ void a4_render(// What to render
 
 Colour getColourAtPoint(Point3D origin, Vector3D ray, std::list<Light*> lights, Point3D eye, Colour ambient, SceneNode* root);
 
+Vector3D reflectRayAlongNormal (Vector3D ray, Vector3D normal);
+
 bool hitAnything (Point3D origin, Vector3D ray, SceneNode* root); 
 
 bool hitAnything (Point3D origin, Vector3D ray, double &t, Vector3D &normal, 
