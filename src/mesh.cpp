@@ -48,7 +48,9 @@ bool Mesh::checkCollision(Point3D rayOrigin, Vector3D ray,
 			I != m_faces.end(); ++I) {
 
 		Point3D* corePoint = &m_verts.at(*(I->begin()));
-		Point3D* previousPoint = NULL;
+    		Point3D* previousPoint = NULL;
+            
+
 		for (Mesh::Face::const_iterator J = I->begin(); J != I->end(); ++J) {
 			int vertex = *J;
 			Point3D point = m_verts.at(vertex);
@@ -76,99 +78,75 @@ bool Mesh::checkCollision(Point3D rayOrigin, Vector3D ray,
 	return false;
 }
 
+// Refer to the documentation for Triangle Intersection
 bool Mesh::intersectTriangle(Point3D v0, Point3D v1, Point3D v2, 
 			Point3D origin, Vector3D ray, Point3D &intersection, Vector3D &normal)
 {
-    // This always returns true, lets try again 
-    /*Vector3D u = b-a;
-    Vector3D v = c-a; 	
+    // Precalculate required vectors
 
-    Vector3D w = origin - a;
-
+    // Define plane normal using triangle edegs.
+    Vector3D u = v1 - v0;       // Triangle edge one
+    Vector3D v = v2 - v0;       // Triangle edge two
+    
+    // The cross product between two vectors (defining a plane) results in the normal of that plane
     normal = u.cross(v);
 
-    double s = (u.dot(v)) * (w.dot(u)) - (v.dot(v)) * (w.dot(v));
-    s = s / ((u.dot(v)) * (u.dot(v)) - (u.dot(u)) * (v.dot(v)));
-
-    double t = (u.dot(v)) * (w.dot(u)) - (u.dot(u)) * (w.dot(v));
-    t = t / ((u.dot(v)) * (u.dot(v)) - (u.dot(u)) * (v.dot(v)));
-
+    // If the three points do not form a triangle but a line segment, we will be left with this
+    if (normal[0] == 0 && normal[1] == 0 && normal[2] == 0) { 
+        return false;
+    }
     
-    if(s + t > 1)
-    {
-        std::cerr << "No Intersection" << endl;	
+    // Line - Plane Intersection
+
+    Vector3D planeToRay = origin - v0;
+    float numerator     = -1 * normal.dot(planeToRay);
+    float denominator   = normal.dot(ray);              // If this is zero, the ray is parallel the plane
+
+    // The ray is  parallel (or close enough) to the triangle plane
+    if (fabs(denominator) < 0.00001) {     
         return false;
     }
 
-    intersection = a + s*u + t*v;	
-    return true;*/
+    // Intersect point of ray with triangle plane
+    float r = numerator / denominator;
 
-    Vector3D    I; // Intersection Point
-    Vector3D    u, v;              // triangle vectors
-    Vector3D    dir, w0, w;           // ray vectors
-    float     r, a, b;              // params to calc ray-plane intersect
-
-    // get triangle edge vectors and plane normal
-    u = v1-v0;
-    v = v2-v0;
-    normal = u.cross(v);              // cross product
-    if (normal[0] == 0 && normal[1] == 0 && normal[2] == 0) {             // triangle is degenerate
-        //std::cerr << "Option F" << std::endl; 
-        return false;                  // do not deal with this case
+    // Intersection of the line with the plane is on the other side of the origin point 
+    if (r < 0.0) {
+        return false;
     }
 
-    // dir = R.P1 - R.P0;              // ray direction vector -> This is our Ray
-    w0 = Vector3D(origin[0] - v0[0], origin[1] - v0[1], origin[2] - v0[2]);
-    a = normal.dot(w0) * -1;
-    b = normal.dot(ray);
-    if (fabs(b) < 0.00001) {     // ray is  parallel to triangle plane
-        if (a == 0) {                // ray lies in triangle plane
-            //std::cerr << "Option D" << std::endl;
-            return false;
-        }
+     // intersect point of ray and plane
+    intersection = origin + r*ray;
 
-        else { 
-            //std::cerr << "Option E" << std::endl;
-            return false;              // ray disjoint from plane
-        }
-    }
+    // Ray - Triangle Intersection
 
-    // get intersect point of ray with triangle plane
-    r = a / b;
-    if (r < 0.0){                    // ray goes away from triangle
-        //std::cerr << "Option G" << std::endl;
-        return false;                   // => no intersect
-    }
-    // for a segment, also test if (r > 1.0) => no intersect
-
-    Vector3D rRay = Vector3D(r*ray[0], r*ray[1], r*ray[2]);
-    I = Vector3D(origin[0] + rRay[0], origin[1] + rRay[1], origin[2] + rRay[2]);            // intersect point of ray and plane
-
-    // is I inside T?
+    //Is the intersection point inside the triangle?
     float    uu, uv, vv, wu, wv, D;
+
+    Vector3D w = intersection - v0; // Intersection vector
 
     uu = u.dot(u);
     uv = u.dot(v);
     vv = v.dot(v);
-    w = Vector3D(I[0] - v0[0], I[1] - v0[1], I[2] - v0[2]);
     wu = w.dot(u);
     wv = w.dot(v);
+    
     D = uv * uv - uu * vv;
 
-    // get and test parametric coords
+    // Calculate s and t. As long as the following holds, our intersection point is in the triangle
+    // 0 <= s <= 1, 0 <= t <= 1, s + t <= 1
     float s, t;
+    
     s = (uv * wv - vv * wu) / D;
     if (s < 0.0 || s > 1.0){         // I is outside T
-        //std::cerr << "Option C" << std::endl;
         return false;
     }
+    
     t = (uv * wu - uu * wv) / D;
     if (t < 0.0 || (s + t) > 1.0) {  // I is outside T
-        //std::cerr << "Option B" << std::endl; 
         return false;
     }
 
-    //std::cerr << "Option A" << std::endl;
-    return true;                       // I is in T
+    return true;
 }
 
