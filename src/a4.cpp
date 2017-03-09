@@ -5,6 +5,14 @@
 
 const double pi = 3.1415926535897;
 
+#define SHADOW true                 // If true, include shadows
+
+#define SUPERSAMPLE true            // If true, antialias using Super Sampling
+#define SUPERSAMPLETYPE 0           // 0 is grid technique. 1 is Random distribution within a cell
+#define SUPERSAMPLERAYCOUNT 9       // The detail for our Super Sampling technique
+
+
+
 void a4_render(// What to render
                SceneNode* root,
                // Where to output the image
@@ -28,103 +36,144 @@ void a4_render(// What to render
         if (I != lights.begin()) std::cerr << ", ";
         std::cerr << **I;
     }
-   
-         
-        std::cerr << "});" << std::endl;
+     
+    std::cerr << "});" << std::endl;
   
 	// Setup device to world coordinate matrix
-
 	Matrix4x4 t4, r3, s2, t1;
 
 	{
-	// Translate (T4)
-	Vector4D a = Vector4D(1, 0, 0, eye[0]);
-	Vector4D b = Vector4D(0, 1, 0, eye[1]);
-	Vector4D c = Vector4D(0, 0, 1, eye[2]);
-	Vector4D d = Vector4D(0, 0, 0, 1);
+        // Translate (T4)
+        Vector4D a = Vector4D(1, 0, 0, eye[0]);
+        Vector4D b = Vector4D(0, 1, 0, eye[1]);
+        Vector4D c = Vector4D(0, 0, 1, eye[2]);
+        Vector4D d = Vector4D(0, 0, 0, 1);
 
-	t4 = Matrix4x4(a, b, c, d);
+        t4 = Matrix4x4(a, b, c, d);
 	}
 
 	{
-	Vector3D w = Vector3D(view[0] / view.length(), view[1] / view.length(), view[2]/view.length());
-	
-	Vector3D u = up.cross(w);
-	u[0] = u[0] / u.length();
-	u[1] = u[1] / u.length();
-	u[2] = u[2] / u.length();
+        Vector3D w = Vector3D(view[0] / view.length(), view[1] / view.length(), view[2]/view.length());
+        
+        Vector3D u = up.cross(w);
+        u[0] = u[0] / u.length();
+        u[1] = u[1] / u.length();
+        u[2] = u[2] / u.length();
 
-	Vector3D v = w.cross(u);
+        Vector3D v = w.cross(u);
 
-	// Rotate (R3)
-	Vector4D a = Vector4D(u[0], v[0], w[0], 0);
-	Vector4D b = Vector4D(u[1], v[1], w[1], 0);
-	Vector4D c = Vector4D(u[2], v[2], w[2], 0);
-	Vector4D d = Vector4D(0, 0, 0, 1);
+        // Rotate (R3)
+        Vector4D a = Vector4D(u[0], v[0], w[0], 0);
+        Vector4D b = Vector4D(u[1], v[1], w[1], 0);
+        Vector4D c = Vector4D(u[2], v[2], w[2], 0);
+        Vector4D d = Vector4D(0, 0, 0, 1);
 
-	r3 = Matrix4x4(a, b, c, d);
+        r3 = Matrix4x4(a, b, c, d);
 	}
 
 	{
-	//Scale (S2)
+        //Scale (S2)
 
-	double fovRad = fov/180 * pi;
+        double fovRad = fov/180 * pi;
 
-	double h = 2 * view.length() * tan(fovRad / 2);
-	double w = width / height * h;
+        double h = 2 * view.length() * tan(fovRad / 2);
+        double w = width / height * h;
 
-	Vector4D a = Vector4D(-1 * h / height, 0, 0, 0);
-	Vector4D b = Vector4D(0, -1 * w / width, 0, 0);
-	Vector4D c = Vector4D(0, 0, 1, 0);
-	Vector4D d = Vector4D(0, 0, 0, 1);
+        Vector4D a = Vector4D(-1 * h / height, 0, 0, 0);
+        Vector4D b = Vector4D(0, -1 * w / width, 0, 0);
+        Vector4D c = Vector4D(0, 0, 1, 0);
+        Vector4D d = Vector4D(0, 0, 0, 1);
 
-	s2 = Matrix4x4(a, b, c, d);
+        s2 = Matrix4x4(a, b, c, d);
 	}
 
 	{
-	//Translate (T1)
-	Vector4D a = Vector4D(1, 0, 0, -1 * width / 2);
-	Vector4D b = Vector4D(0, 1, 0, -1 * height / 2);
-	Vector4D c = Vector4D(0, 0, 1, view.length());
-	Vector4D d = Vector4D(0, 0, 0, 1);
+        //Translate (T1)
+        Vector4D a = Vector4D(1, 0, 0, -1 * width / 2);
+        Vector4D b = Vector4D(0, 1, 0, -1 * height / 2);
+        Vector4D c = Vector4D(0, 0, 1, view.length());
+        Vector4D d = Vector4D(0, 0, 0, 1);
 
-	t1 = Matrix4x4(a, b, c, d);
+        t1 = Matrix4x4(a, b, c, d);
 	}
 
 	Matrix4x4 transform = t4*r3*s2*t1;
   
-        // 3 elements per pixel. R, G, B.
-        Image img(width, height, 3);
+    // 3 elements per pixel. R, G, B.
+    Image img(width, height, 3);
 
     std::cerr << "Begin creating light rays" << std::endl;
 
-    // Perform entire image creation. Transform a pixel point into a world point, create a vector from that pixel to our eye, 
-    // and find what color that ray of light will be.
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-      
-	    Point3D pixelPoint = Point3D(x, y, 0);
-	    Point3D worldPoint = transform * pixelPoint; 
+    for (float y = 0; y < height; y++) {
+        for (float x = 0; x < width; x++) 
+        {
+            Colour finalColor = Colour(0, 0, 0);
 
-	    Vector3D ray = worldPoint - eye;
-	    ray.normalize();
+            if (SUPERSAMPLE) 
+            {
+                if (SUPERSAMPLETYPE == 0) // Basic Super Sampling using grid technique
+                {
+                    for (float n = 0; n < SUPERSAMPLERAYCOUNT; n++) 
+                    {
+                        float lengthPerSubsection = 1 / SUPERSAMPLERAYCOUNT;
+                        float subSectionEndDistance = n / SUPERSAMPLERAYCOUNT;
 
-	    Colour c = getColourAtPoint(eye, ray, lights, eye, ambient, root);
+                        Point3D pixelPoint = Point3D(x + subSectionEndDistance - (lengthPerSubsection/2), 
+                                                     y + subSectionEndDistance - (lengthPerSubsection/2), 
+                                                     0);
 
-	    img(x, y, 0) = c.R();
-	    img(x, y, 1) = c.G();
-	    img(x, y, 2) = c.B();
-		
-	    // Red: increasing from top to bottom
-            //img(x, y, 0) = (double)y / height;
-            // Green: increasing from left to right
-            //img(x, y, 1) = (double)x / width;
-            // Blue: in lower-left and upper-right corners
-            //img(x, y, 2) = ((y < height/2 && x < height/2)
-            //               || (y >= height/2 && x >= height/2)) ? 1.0 : 0.0;
+                        Point3D worldPoint = transform * pixelPoint; 
+
+                        Vector3D ray = worldPoint - eye;
+                        ray.normalize();
+
+                        Colour c = getColourAtPoint(eye, ray, lights, eye, ambient, root);
+                        c = Colour(c.R() / SUPERSAMPLERAYCOUNT, c.G() / SUPERSAMPLERAYCOUNT, c.B() / SUPERSAMPLERAYCOUNT);
+
+                        finalColor = finalColor + c;
+                    }
+                } else if (SUPERSAMPLETYPE == 1) // Super Sampling using Poisson-like distibution
+                {
+                    for (float n = 0; n < SUPERSAMPLERAYCOUNT; n++) 
+                    {
+                        float subSectionEndDistance = n / SUPERSAMPLERAYCOUNT;
+
+                        // Random number between 0 and 1 / SUPERSAMPLERAYCOUNT;
+                        float randX =  ((float) rand() / (RAND_MAX)) / SUPERSAMPLERAYCOUNT;
+                        float randY = ((float) rand() / (RAND_MAX)) / SUPERSAMPLERAYCOUNT;
+
+                        Point3D pixelPoint = Point3D(x + subSectionEndDistance - (randX), 
+                                                     y + subSectionEndDistance - (randY), 
+                                                     0);
+                                                     
+                        Point3D worldPoint = transform * pixelPoint; 
+
+                        Vector3D ray = worldPoint - eye;
+                        ray.normalize();
+
+                        Colour c = getColourAtPoint(eye, ray, lights, eye, ambient, root);
+                        c = Colour(c.R() / SUPERSAMPLERAYCOUNT, c.G() / SUPERSAMPLERAYCOUNT, c.B() / SUPERSAMPLERAYCOUNT);
+
+                        finalColor = finalColor + c;
+                    }
+                }
+            }
+            else // Basic Ray Tracing 
+            {
+                Point3D pixelPoint = Point3D(x, y, 0);
+                Point3D worldPoint = transform * pixelPoint; 
+
+                Vector3D ray = worldPoint - eye;
+                ray.normalize();
+
+                finalColor = getColourAtPoint(eye, ray, lights, eye, ambient, root);
+            }
+
+            img(x, y, 0) = finalColor.R();
+            img(x, y, 1) = finalColor.G();
+            img(x, y, 2) = finalColor.B();
         }
     }	
-
 
     std::cerr << "Create Image: " << filename << std::endl;
     img.savePng(filename);  
@@ -148,6 +197,7 @@ Colour getColourAtPoint(Point3D origin, Vector3D ray, std::list<Light*> lights, 
 	    {   
             Light* light = *it;
 
+            // Intersection point
             Point3D pointOnSurface = origin + c_t*ray;
             Vector3D dirToLight = light->position - pointOnSurface;	
 
@@ -162,7 +212,7 @@ Colour getColourAtPoint(Point3D origin, Vector3D ray, std::list<Light*> lights, 
 
             // Check the shadow ray
             // If we don't hit anything, add diffuse and specular light
-            if(!hitAnything(pointOnSurface, dirToLight, root))  
+            if(!SHADOW || !hitAnything(pointOnSurface, dirToLight, root))  
             {
                 float specular = 0.0;
 

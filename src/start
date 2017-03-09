@@ -11,12 +11,12 @@ echo ""
 echo "-----"
 
 # Need to move supporting files back to /data
-./rt nonhier2.lua
+./rt hier.lua
 
 echo "-----"
 echo
 
-open nonhier2.png
+open hier.png
 
 # Files with a render line (aka scene files)
 # hier
